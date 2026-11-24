@@ -2,7 +2,7 @@
 <html lang="th">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>ลอยกระทงออนไลน์</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Mitr:wght@300;400;500&display=swap" rel="stylesheet" />
@@ -19,7 +19,9 @@
     <div class="moon-reflection"></div>
   </div>
 
+  <button id="open-form" class="fab" type="button">ลอยกระทง 🪷</button>
   <form id="form" class="panel">
+    <button type="button" id="close-form" class="close" aria-label="ปิด">×</button>
     <input id="name" maxlength="30" placeholder="ชื่อของคุณ" required />
     <input id="wish" maxlength="80" placeholder="คำอธิษฐาน…" required />
     <div class="kinds" id="kinds"></div>

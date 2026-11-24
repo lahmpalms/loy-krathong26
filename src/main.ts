@@ -32,7 +32,7 @@ function place(k: Krathong, el: HTMLElement) {
   const duration = DURATION_S + (h % 40);
   const startOffset = (h >>> 10) % duration;
   const ageS = Math.max((Date.now() - new Date(k.createdAt).getTime()) / 1000, 0);
-  el.style.top = `${10 + depth * 52}%`;
+  el.style.setProperty('--depth', depth.toFixed(3));
   el.style.zIndex = String(1 + Math.round(depth * 100));
   el.style.setProperty('--scale', (0.75 + depth * 0.4).toFixed(2));
   el.style.animationDuration = `${duration}s, ${3 + (h % 3)}s`;
@@ -84,6 +84,11 @@ function showWish(k: Krathong, ev: MouseEvent) {
   ev.stopPropagation();
 }
 document.addEventListener('click', () => (bubble.hidden = true));
+
+const setFormOpen = (open: boolean) => document.body.classList.toggle('form-open', open);
+$('open-form').addEventListener('click', (e) => { e.stopPropagation(); setFormOpen(true); });
+$('close-form').addEventListener('click', () => setFormOpen(false));
+document.addEventListener('keydown', (e) => e.key === 'Escape' && setFormOpen(false));
 
 function setupPicker<T extends string>(
   box: HTMLElement,
@@ -151,6 +156,7 @@ async function main() {
       const k = await store.add({ name, wish: wishInput.value.trim(), color: selectedColor, kind: selectedKind });
       try { localStorage.setItem('krathong-name', name); } catch { /* empty */ }
       wishInput.value = '';
+      setFormOpen(false);
       render([k]);
       rendered.get(k.id)?.classList.add('mine');
     } catch (err) {
