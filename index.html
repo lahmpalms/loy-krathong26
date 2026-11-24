@@ -22,8 +22,10 @@
   <button id="open-form" class="fab" type="button">ลอยกระทง 🪷</button>
   <form id="form" class="panel">
     <button type="button" id="close-form" class="close" aria-label="ปิด">×</button>
-    <input id="name" maxlength="30" placeholder="ชื่อของคุณ" required />
-    <input id="wish" maxlength="80" placeholder="คำอธิษฐาน…" required />
+    <label class="field"><span>ชื่อ</span>
+      <input id="name" maxlength="30" placeholder="ชื่อของคุณ" autocomplete="nickname" required /></label>
+    <label class="field"><span>คำอธิษฐาน</span>
+      <input id="wish" maxlength="80" placeholder="ขอให้…" autocomplete="off" required /></label>
     <div class="kinds" id="kinds"></div>
     <div class="colors" id="colors"></div>
     <button type="submit">ลอยกระทง 🪷</button>
