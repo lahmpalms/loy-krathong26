@@ -4,6 +4,7 @@ services:
   app:
     build: .
     restart: unless-stopped
+    env_file: .env  # ADMIN_PASSWORD=... (server only, not in git)
     ports:
       - "172.28.0.128:8026:3026"
     volumes:

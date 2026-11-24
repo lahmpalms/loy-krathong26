@@ -13,6 +13,7 @@ https://loykrathong26.lahmpalms.me → Caddy ของ stagebatt (`/opt/stagebat
     ssh root@118.27.151.193 'cd /opt/loykrathong26 && git pull && docker compose -p loykrathong26 up -d --build'
 
 DB อยู่ใน docker volume `loykrathong26_data`
+Admin: https://loykrathong26.lahmpalms.me/admin (รหัสอยู่ใน `/opt/loykrathong26/.env` → `ADMIN_PASSWORD=`)
 ถ้า stagebatt deploy แล้ว Caddyfile ถูกเขียนทับ ต้องเพิ่ม block นี้กลับ:
 
     loykrathong26.lahmpalms.me {

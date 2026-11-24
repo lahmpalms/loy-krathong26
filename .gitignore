@@ -5,3 +5,4 @@ amplify_outputs*
 .npm
 .DS_Store
 server/*.db*
+.env

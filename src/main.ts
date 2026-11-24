@@ -1,5 +1,5 @@
 import './style.css';
-import { createStore, type Krathong } from './store';
+import { checkAdmin, createStore, removeKrathong, type Krathong } from './store';
 import { KINDS, drawKrathong, toKind, type Kind } from './kinds';
 
 const COLORS = ['#ff8fb1', '#ffd23f', '#ffffff', '#c49bff', '#ff9f45'];
@@ -18,6 +18,7 @@ const kindsBox = $<HTMLDivElement>('kinds');
 let selectedColor = COLORS[0];
 let selectedKind: Kind = 'classic';
 const rendered = new Map<string, HTMLElement>();
+let adminPassword: string | null = null; // set after logging in on /admin
 
 function hash(s: string) {
   let h = 2166136261;
@@ -45,12 +46,27 @@ function updateCount(items: Krathong[]) {
     : 'ยังไม่มีใครลอย มาเป็นคนแรกกัน';
 }
 
+function unrender(id: string) {
+  rendered.get(id)?.remove();
+  rendered.delete(id);
+}
+
+// `items` is the full list from the server: anything missing was deleted, except krathongs
+// newer than the list itself (a poll that started before our own add finished).
+function sync(items: Krathong[]) {
+  const ids = new Set(items.map((k) => k.id));
+  const newest = items.at(-1)?.createdAt ?? '';
+  for (const [id, el] of [...rendered]) if (!ids.has(id) && el.dataset.createdAt! <= newest) unrender(id);
+  render(items);
+}
+
 function render(items: Krathong[]) {
   for (const k of items) {
     if (rendered.has(k.id)) continue;
     const el = document.createElement('button');
     el.className = 'krathong';
     el.type = 'button';
+    el.dataset.createdAt = k.createdAt;
 
     const caption = document.createElement('span');
     caption.className = 'caption';
@@ -78,12 +94,68 @@ function showWish(k: Krathong, ev: MouseEvent) {
   const wish = document.createElement('p');
   wish.textContent = `“${k.wish}”`;
   bubble.append(who, wish);
+  if (adminPassword) bubble.append(deleteButton(k));
   bubble.hidden = false;
   bubble.style.left = `${Math.min(ev.clientX, window.innerWidth - 260)}px`;
   bubble.style.top = `${Math.max(ev.clientY - 110, 10)}px`;
   ev.stopPropagation();
 }
 document.addEventListener('click', () => (bubble.hidden = true));
+bubble.addEventListener('click', (e) => e.stopPropagation());
+
+function deleteButton(k: Krathong) {
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.className = 'delete';
+  b.textContent = 'ลบกระทงนี้';
+  let armed = false;
+  b.addEventListener('click', async () => {
+    if (!armed) {
+      armed = true;
+      b.textContent = 'กดอีกครั้งเพื่อยืนยัน';
+      return;
+    }
+    b.disabled = true;
+    try {
+      await removeKrathong(k.id, adminPassword!);
+      unrender(k.id);
+      bubble.hidden = true;
+    } catch (err) {
+      b.textContent = `ลบไม่สำเร็จ: ${(err as Error).message}`;
+      b.disabled = false;
+      armed = false;
+    }
+  });
+  return b;
+}
+
+function setupAdmin() {
+  document.body.classList.add('admin');
+  const box = document.createElement('form');
+  box.className = 'admin-login';
+  box.innerHTML = '<strong>โหมดแอดมิน</strong><input type="password" placeholder="รหัสผ่าน" autocomplete="current-password" required /><button>เข้าสู่ระบบ</button><span class="msg"></span>';
+  const input = box.querySelector('input')!;
+  const msg = box.querySelector<HTMLSpanElement>('.msg')!;
+  const enter = (pw: string) => {
+    adminPassword = pw;
+    box.replaceChildren(Object.assign(document.createElement('strong'), { textContent: 'แอดมิน: แตะกระทงเพื่อลบ' }));
+  };
+  box.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    msg.textContent = '';
+    try {
+      await checkAdmin(input.value);
+      try { sessionStorage.setItem('krathong-admin', input.value); } catch { /* empty */ }
+      enter(input.value);
+    } catch (err) {
+      msg.textContent = (err as Error).message;
+    }
+  });
+  document.body.append(box);
+  let saved: string | null = null;
+  try { saved = sessionStorage.getItem('krathong-admin'); } catch { /* empty */ }
+  if (saved) checkAdmin(saved).then(() => enter(saved), () => {});
+}
 
 const setFormOpen = (open: boolean) => document.body.classList.toggle('form-open', open);
 $('open-form').addEventListener('click', (e) => { e.stopPropagation(); setFormOpen(true); });
@@ -129,6 +201,7 @@ function setupStars() {
 
 async function main() {
   setupStars();
+  if (location.pathname.replace(/\/$/, '') === '/admin') setupAdmin();
   setupPicker(kindsBox, Object.keys(KINDS) as Kind[], (b, k) => {
     b.className = 'kind';
     b.dataset.kind = k;
@@ -144,7 +217,7 @@ async function main() {
   try { nameInput.value = localStorage.getItem('krathong-name') ?? ''; } catch { /* empty */ }
 
   const store = createStore();
-  store.subscribe((items) => { updateCount(items); render(items); });
+  store.subscribe((items) => { updateCount(items); sync(items); });
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();

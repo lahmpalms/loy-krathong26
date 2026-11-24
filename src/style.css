@@ -171,3 +171,18 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .river::before, .star, .flame, .steam { animation: none; }
 }
+
+.bubble .delete {
+  margin-top: 10px; width: 100%; padding: 8px; border: 0; border-radius: 8px;
+  background: #c0392b; color: #fff; font: inherit; cursor: pointer;
+}
+.bubble .delete[disabled] { opacity: .6; }
+.admin-login {
+  position: fixed; z-index: 40; top: 12px; left: 12px; right: 12px; max-width: 360px;
+  display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+  padding: 10px 12px; border-radius: 12px; background: #3a0d0dee; border: 1px solid #ff6b6b66; color: #fff;
+}
+.admin-login input { flex: 1 1 140px; padding: 8px 10px; border-radius: 8px; border: 1px solid #ffffff44; background: #ffffff14; color: #fff; font: inherit; font-size: 16px; }
+.admin-login button { padding: 8px 14px; border: 0; border-radius: 8px; background: #ffd23f; color: #3a2a00; font: inherit; cursor: pointer; }
+.admin-login .msg { flex-basis: 100%; color: #ffb3b3; font-size: 13px; }
+.admin-login .msg:empty { display: none; }

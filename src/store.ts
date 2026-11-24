@@ -34,3 +34,13 @@ export function createStore(): Store {
     },
   };
 }
+
+export async function checkAdmin(password: string): Promise<void> {
+  const res = await fetch('/api/admin', { headers: { Authorization: `Bearer ${password}` } });
+  if (!res.ok) throw new Error((await res.json().catch(() => null))?.error ?? `HTTP ${res.status}`);
+}
+
+export async function removeKrathong(id: string, password: string): Promise<void> {
+  const res = await fetch(`${API}/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${password}` } });
+  if (!res.ok && res.status !== 404) throw new Error((await res.json().catch(() => null))?.error ?? `HTTP ${res.status}`);
+}
