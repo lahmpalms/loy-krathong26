@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ลอยกระทงออนไลน์</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Mitr:wght@300;400;500&display=swap" rel="stylesheet" />
+</head>
+<body>
+  <div class="sky" id="sky">
+    <div class="moon"></div>
+    <header>
+      <h1>ลอยกระทง 2569</h1>
+      <p id="count">กำลังโหลด…</p>
+    </header>
+  </div>
+  <div class="river" id="river">
+    <div class="moon-reflection"></div>
+  </div>
+
+  <form id="form" class="panel">
+    <input id="name" maxlength="30" placeholder="ชื่อของคุณ" required />
+    <input id="wish" maxlength="80" placeholder="คำอธิษฐาน…" required />
+    <div class="kinds" id="kinds"></div>
+    <div class="colors" id="colors"></div>
+    <button type="submit">ลอยกระทง 🪷</button>
+  </form>
+
+  <div id="bubble" class="bubble" hidden></div>
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>
