@@ -10,6 +10,7 @@ const DB_PATH = process.env.DB_PATH ?? new URL('./krathong.db', import.meta.url)
 const POSTS_PER_MINUTE = 6;
 const ADMIN_TRIES_PER_MINUTE = 5;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD; // unset → admin API disabled
+const CLOSED = Boolean(process.env.CLOSED); // event over: no new krathongs
 
 const db = new DatabaseSync(DB_PATH);
 db.exec(`PRAGMA journal_mode = WAL;
@@ -97,6 +98,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'GET') return send(res, 200, listAll.all());
 
   if (req.method === 'POST') {
+    if (CLOSED) return send(res, 403, { error: 'ปิดรับลอยกระทงแล้ว ขอบคุณทุกคนที่มาร่วมสนุก' });
     const ip = clientIp(req);
     if (recentHits(recentPosts, ip).length >= POSTS_PER_MINUTE) return send(res, 429, { error: 'ลอยถี่เกินไป รอสักครู่' });
     hit(recentPosts, ip);

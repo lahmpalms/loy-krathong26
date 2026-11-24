@@ -5,6 +5,8 @@ services:
     build: .
     restart: unless-stopped
     env_file: .env  # ADMIN_PASSWORD=... (server only, not in git)
+    environment:
+      CLOSED: "1"  # event is over: reject new krathongs (remove to reopen)
     ports:
       - "172.28.0.128:8026:3026"
     volumes:

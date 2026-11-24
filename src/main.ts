@@ -1,6 +1,7 @@
 import './style.css';
 import { checkAdmin, createStore, removeKrathong, type Krathong } from './store';
 import { KINDS, drawKrathong, toKind, type Kind } from './kinds';
+import { showCredits } from './credits';
 
 const COLORS = ['#ff8fb1', '#ffd23f', '#ffffff', '#c49bff', '#ff9f45'];
 
@@ -212,7 +213,10 @@ function setupStars() {
 
 async function main() {
   setupStars();
-  if (location.pathname.replace(/\/$/, '') === '/admin') setupAdmin();
+  // The event is over: the form is gone, `/` rolls the end credits, `/admin` keeps the river for deleting.
+  document.body.classList.add('ended');
+  const isAdmin = location.pathname.replace(/\/$/, '') === '/admin';
+  if (isAdmin) setupAdmin();
   setupPicker(kindsBox, Object.keys(KINDS) as Kind[], (b, k) => {
     b.className = 'kind';
     b.dataset.kind = k;
@@ -228,7 +232,15 @@ async function main() {
   try { nameInput.value = localStorage.getItem('krathong-name') ?? ''; } catch { /* empty */ }
 
   const store = createStore();
-  store.subscribe((items) => { updateCount(items); sync(items); });
+  let creditsShown = isAdmin;
+  store.subscribe((items) => {
+    updateCount(items);
+    sync(items);
+    if (!creditsShown) {
+      creditsShown = true;
+      showCredits(items);
+    }
+  });
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
