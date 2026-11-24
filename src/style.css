@@ -30,47 +30,99 @@ body {
 .river {
   position: absolute; inset: 28% 0 0 0;
   z-index: 1; /* own stacking context so krathong z-indexes never cover the form */
-  --top-min: 10%; --top-range: 52%;
-  background: linear-gradient(#10275e 0%, #071436 100%);
+  --top-min: 2%; --top-range: 70%;
+  background: linear-gradient(#1d3577 0%, #10275e 12%, #0a1b48 45%, #050f2e 100%);
+  overflow: hidden;
 }
+/* soft haze where the water meets the sky */
+.river::after {
+  content: ''; position: absolute; inset: 0 0 auto 0; height: 14%;
+  background: linear-gradient(#2a4487aa, transparent);
+  pointer-events: none;
+}
+/* slow, perspective-squashed swell lines */
 .river::before {
-  content: ''; position: absolute; inset: 0;
-  background: repeating-linear-gradient(180deg, transparent 0 18px, #ffffff0d 18px 20px);
-  animation: ripple 6s linear infinite;
+  content: ''; position: absolute; inset: -40px 0 0 0;
+  background:
+    repeating-linear-gradient(180deg, transparent 0 22px, #ffffff08 22px 24px),
+    repeating-linear-gradient(180deg, transparent 0 9px, #ffffff05 9px 10px);
+  transform: perspective(300px) rotateX(35deg); transform-origin: top;
+  animation: ripple 9s linear infinite;
 }
-@keyframes ripple { to { background-position: 0 40px; } }
+@keyframes ripple { to { background-position: 0 48px, 0 20px; } }
 .moon-reflection {
-  position: absolute; right: calc(12% + 20px); top: 0;
-  width: 50px; height: 100%;
-  background: linear-gradient(#f7e3a155, transparent 80%);
-  filter: blur(6px);
+  position: absolute; right: calc(12% + 5px); top: 0;
+  width: 80px; height: 100%;
+  background: repeating-linear-gradient(180deg, #f7e3a1aa 0 3px, transparent 3px 9px);
+  -webkit-mask: linear-gradient(#000 0%, #0008 40%, transparent 85%), radial-gradient(closest-side, #000, transparent);
+  -webkit-mask-composite: source-in; mask-composite: intersect;
+  mask: linear-gradient(#000 0%, #0008 40%, transparent 85%), radial-gradient(closest-side, #000, transparent);
+  filter: blur(1.5px);
+  animation: shimmer 3s ease-in-out infinite alternate;
+}
+@keyframes shimmer {
+  from { transform: scaleX(.8); opacity: .7; }
+  to { transform: scaleX(1.15) translateY(3px); opacity: 1; }
 }
 
 .krathong {
-  --scale: 1; --depth: 0;
+  --scale: 1; --depth: 0; --y: 0;
   position: absolute; left: 0;
-  top: calc(var(--top-min) + var(--depth) * var(--top-range));
+  top: calc(var(--top-min) + var(--y) * var(--top-range));
   width: 84px; height: 84px;
   padding: 0; border: 0; background: none; cursor: pointer;
-  animation-name: drift, bob;
-  animation-timing-function: linear, ease-in-out;
-  animation-iteration-count: infinite;
+  opacity: calc(.55 + var(--depth) * .45);
+  animation: drift linear infinite;
+}
+.krathong .float {
+  position: absolute; inset: 0; display: block;
+  animation: rock var(--bob, 4s) ease-in-out infinite;
+  animation-delay: var(--bob-delay, 0s);
+  transform-origin: 50% 70%;
 }
 .krathong svg { filter: drop-shadow(0 0 10px #ffb30066); }
+/* candle light on the water under the krathong */
+.krathong .reflect {
+  position: absolute; left: 50%; top: 66%; width: 70%; height: 46%;
+  transform: translateX(-50%);
+  background: radial-gradient(closest-side, #ffb30066, #ff8f0022 60%, transparent);
+  filter: blur(2px);
+  animation: glow 1.6s ease-in-out infinite alternate;
+  animation-delay: var(--bob-delay, 0s);
+}
+@keyframes glow { to { opacity: .55; transform: translateX(-50%) scaleX(1.15); } }
+.krathong .ripple {
+  position: absolute; left: 50%; top: 70%; width: 90%; height: 22%;
+  border: 1px solid #ffffff40; border-radius: 50%;
+  transform: translate(-50%, -50%) scale(.6); opacity: 0;
+  animation: ring 5s ease-out infinite;
+  animation-delay: var(--bob-delay, 0s);
+}
+.krathong .ripple.r2 { animation-delay: calc(var(--bob-delay, 0s) - 2.5s); }
+@keyframes ring {
+  0% { transform: translate(-50%, -50%) scale(.6); opacity: .8; }
+  100% { transform: translate(-50%, -50%) scale(1.9); opacity: 0; }
+}
 .krathong .caption {
-  position: absolute; left: 50%; bottom: 92%; transform: translateX(-50%);
+  /* undo part of the krathong's distance scaling so far wishes stay readable (>= 80% size) */
+  position: absolute; left: 50%; bottom: 92%;
+  transform: translateX(-50%) scale(max(1, calc(.8 / var(--scale))));
+  transform-origin: 50% 100%;
   width: max-content; max-width: 170px;
   display: flex; flex-direction: column; align-items: center; gap: 1px;
   padding: 4px 8px; border-radius: 10px;
   background: #0b1a4a99; border: 1px solid #ffffff1f;
   font-size: 12px; line-height: 1.35; text-align: center; color: #fff;
   pointer-events: none;
+  transition: opacity .3s;
 }
+.krathong:hover { z-index: 200 !important; opacity: 1; }
 .krathong .wish {
   display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
   text-shadow: 0 0 6px #ffd76a66;
 }
 .krathong .who { font-size: 10px; opacity: .7; }
+.krathong.mine { opacity: 1; }
 .krathong.mine .caption { border-color: #ffd23f; box-shadow: 0 0 12px #ffd23f66; }
 .krathong.mine .who { color: #ffd23f; opacity: 1; }
 .steam { animation: steam 2s ease-in-out infinite; }
@@ -78,10 +130,13 @@ body {
 .flame { animation: flicker .3s ease-in-out infinite alternate; }
 @keyframes flicker { to { transform: scale(.85, 1.1); } }
 @keyframes drift {
-  from { transform: translateX(-120px) scale(var(--scale)); }
-  to { transform: translateX(calc(100vw + 20px)) scale(var(--scale)); }
+  from { transform: translateX(-140px) scale(var(--scale)); }
+  to { transform: translateX(calc(100vw + 40px)) scale(var(--scale)); }
 }
-@keyframes bob { 50% { margin-top: 6px; } }
+@keyframes rock {
+  0%, 100% { transform: translateY(0) rotate(-2.5deg); }
+  50% { transform: translateY(4px) rotate(2.5deg); }
+}
 
 .panel {
   position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%);
@@ -157,7 +212,7 @@ body {
   .swatch { width: 32px; height: 32px; }
   .panel button[type=submit] { padding: 14px; font-size: 17px; }
 
-  .river { --top-min: 8%; --top-range: 66%; }
+  .river { --top-min: 2%; --top-range: 72%; }
   .krathong { width: 60px; height: 60px; }
   .krathong .caption { max-width: 120px; font-size: 11px; padding: 3px 6px; }
   .krathong .who { font-size: 9px; }
@@ -165,11 +220,11 @@ body {
   .sky p { font-size: 14px; margin-top: 2px; }
 }
 @media (max-height: 520px) {
-  .river { --top-min: 22%; --top-range: 40%; }
+  .river { --top-min: 4%; --top-range: 55%; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .river::before, .star, .flame, .steam { animation: none; }
+  .river::before, .star, .flame, .steam, .moon-reflection, .krathong .float, .krathong .reflect, .krathong .ripple { animation: none; }
 }
 
 .bubble .delete {

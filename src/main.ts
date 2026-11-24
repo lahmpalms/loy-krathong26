@@ -3,7 +3,6 @@ import { checkAdmin, createStore, removeKrathong, type Krathong } from './store'
 import { KINDS, drawKrathong, toKind, type Kind } from './kinds';
 
 const COLORS = ['#ff8fb1', '#ffd23f', '#ffffff', '#c49bff', '#ff9f45'];
-const DURATION_S = 80;
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 const river = $<HTMLDivElement>('river');
@@ -26,18 +25,29 @@ function hash(s: string) {
   return h;
 }
 
-// Position derives from id + createdAt only, so every viewer sees the same layout.
-function place(k: Krathong, el: HTMLElement) {
+// Krathong in slot i (createdAt order) goes to lane i % LANES. Every krathong in a lane moves at
+// the lane's speed, so their spacing never changes; lanes at different depths pass each other
+// (parallax). Within a lane, the golden ratio spreads them evenly however many there are.
+// Position is a function of wall-clock time, so every viewer sees the same river.
+const LANES = 7;
+const GOLDEN = 0.6180339887;
+const frac = (x: number) => x - Math.floor(x);
+
+function place(k: Krathong, el: HTMLElement, slot: number) {
   const h = hash(k.id);
-  const depth = (h % 1000) / 1000; // 0 = far (top of river), 1 = near
-  const duration = DURATION_S + (h % 40);
-  const startOffset = (h >>> 10) % duration;
-  const ageS = Math.max((Date.now() - new Date(k.createdAt).getTime()) / 1000, 0);
+  const lane = slot % LANES;
+  const laneDepth = (lane + 0.5) / LANES; // 0 = far (horizon), 1 = near (bank)
+  const depth = laneDepth + ((h % 100) / 100 - 0.5) * (0.6 / LANES); // jitter looks, not speed
+  const phase = frac(lane * 0.37 + Math.floor(slot / LANES) * GOLDEN);
+  const duration = 70 + (1 - laneDepth) * 90; // far lanes drift slower across the screen
   el.style.setProperty('--depth', depth.toFixed(3));
+  el.style.setProperty('--y', (depth ** 1.6).toFixed(3)); // perspective: far rows bunch at the horizon
+  el.style.setProperty('--scale', (0.42 + depth * 0.68).toFixed(3));
   el.style.zIndex = String(1 + Math.round(depth * 100));
-  el.style.setProperty('--scale', (0.75 + depth * 0.4).toFixed(2));
-  el.style.animationDuration = `${duration}s, ${3 + (h % 3)}s`;
-  el.style.animationDelay = `${-((ageS + startOffset) % duration)}s, ${-(h % 3)}s`;
+  el.style.animationDuration = `${duration}s`;
+  el.style.animationDelay = `${-((Date.now() / 1000 + phase * duration) % duration)}s`;
+  el.style.setProperty('--bob', `${3.5 + (h % 20) / 10}s`);
+  el.style.setProperty('--bob-delay', `${-(h % 1000) / 100}s`);
 }
 
 function updateCount(items: Krathong[]) {
@@ -57,11 +67,11 @@ function sync(items: Krathong[]) {
   const ids = new Set(items.map((k) => k.id));
   const newest = items.at(-1)?.createdAt ?? '';
   for (const [id, el] of [...rendered]) if (!ids.has(id) && el.dataset.createdAt! <= newest) unrender(id);
-  render(items);
+  render(items, 0);
 }
 
-function render(items: Krathong[]) {
-  for (const k of items) {
+function render(items: Krathong[], firstSlot: number) {
+  for (const [i, k] of items.entries()) {
     if (rendered.has(k.id)) continue;
     const el = document.createElement('button');
     el.className = 'krathong';
@@ -78,10 +88,11 @@ function render(items: Krathong[]) {
     who.textContent = `— ${k.name}`;
     caption.append(wish, who);
 
-    el.innerHTML = drawKrathong(toKind(k.kind), k.color);
+    el.innerHTML = `<span class="ripple"></span><span class="ripple r2"></span><span class="reflect"></span>`
+      + `<span class="float">${drawKrathong(toKind(k.kind), k.color)}</span>`;
     el.prepend(caption);
     el.addEventListener('click', (ev) => showWish(k, ev));
-    place(k, el);
+    place(k, el, firstSlot + i);
     river.append(el);
     rendered.set(k.id, el);
   }
@@ -229,7 +240,7 @@ async function main() {
       try { localStorage.setItem('krathong-name', name); } catch { /* empty */ }
       wishInput.value = '';
       setFormOpen(false);
-      render([k]);
+      render([k], rendered.size);
       rendered.get(k.id)?.classList.add('mine');
     } catch (err) {
       console.error(err);
