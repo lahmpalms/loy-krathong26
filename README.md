@@ -7,8 +7,15 @@ Vite + TypeScript frontend, Node API + SQLite (`server/server.mjs`, Node >= 22.1
     npm run api    # API ที่ 127.0.0.1:3026 (DB: server/krathong.db)
     npm run dev    # vite proxy /api ไปที่ API
 
-## Deploy (VPS)
-    ssh root@118.27.151.193 'bash -s' < deploy/setup.sh
+## Deploy (VPS 118.27.151.193)
+https://loykrathong26.lahmpalms.me → Caddy ของ stagebatt (`/opt/stagebatt/Caddyfile` มี block loykrathong26) → 172.28.0.128:8026 → container
 
-nginx เสิร์ฟ `dist/` และ proxy `/api/` ไป systemd service `loykrathong26`
-DB อยู่ที่ `/var/lib/loykrathong26/krathong.db` (ลบ/แก้ข้อมูลด้วย sqlite3 บนเครื่อง)
+    ssh root@118.27.151.193 'cd /opt/loykrathong26 && git pull && docker compose -p loykrathong26 up -d --build'
+
+DB อยู่ใน docker volume `loykrathong26_data`
+ถ้า stagebatt deploy แล้ว Caddyfile ถูกเขียนทับ ต้องเพิ่ม block นี้กลับ:
+
+    loykrathong26.lahmpalms.me {
+        import safe_access_log
+        reverse_proxy 172.28.0.128:8026
+    }

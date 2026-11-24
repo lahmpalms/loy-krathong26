@@ -1,10 +1,11 @@
-# Standalone: does not join or touch any other project's network.
+# Standalone: does not join any other project's network.
+# Bound only to the docker bridge gateway that the Caddy proxy (stagebatt) reaches; not public.
 services:
   app:
     build: .
     restart: unless-stopped
     ports:
-      - "8026:3026"
+      - "172.28.0.128:8026:3026"
     volumes:
       - data:/data
 volumes:

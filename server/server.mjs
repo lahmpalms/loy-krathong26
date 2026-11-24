@@ -72,7 +72,8 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'GET') return send(res, 200, listAll.all());
 
   if (req.method === 'POST') {
-    const ip = req.headers['x-real-ip'] ?? req.socket.remoteAddress;
+    // Caddy replaces X-Forwarded-For with the real client IP; the port is only reachable from Caddy.
+    const ip = req.headers['x-forwarded-for']?.split(',')[0].trim() ?? req.socket.remoteAddress;
     if (rateLimited(ip)) return send(res, 429, { error: 'ลอยถี่เกินไป รอสักครู่' });
     let body;
     try { body = await readJson(req); } catch { return send(res, 400, { error: 'bad json' }); }
