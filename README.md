@@ -1,17 +1,14 @@
 # ลอยกระทงออนไลน์
 
-Vite + TypeScript frontend, Amplify Gen 2 backend (Amplify Data = AppSync + DynamoDB).
+Vite + TypeScript frontend, Node API + SQLite (`server/server.mjs`, Node >= 22.13, ไม่มี dependency)
 
 ## Local
     npm install
-    npm run dev          # ไม่มี amplify_outputs.json → ใช้ localStorage (ทดสอบหน้าตา)
-    npx ampx sandbox     # สร้าง backend ส่วนตัวบน AWS + เขียน amplify_outputs.json → ใช้ DB จริง
+    npm run api    # API ที่ 127.0.0.1:3026 (DB: server/krathong.db)
+    npm run dev    # vite proxy /api ไปที่ API
 
-## Deploy
-1. push โฟลเดอร์นี้ขึ้น GitHub/GitLab/CodeCommit
-2. Amplify Console → Create new app → เลือก repo/branch
-3. Amplify อ่าน amplify.yml เอง: deploy backend (DynamoDB) แล้ว build frontend
+## Deploy (VPS)
+    ssh root@118.27.151.193 'bash -s' < deploy/setup.sh
 
-## Data
-ตาราง Krathong(name, wish, color, createdAt). API key สร้าง/อ่านได้อย่างเดียว ลบหรือแก้ผ่านเว็บไม่ได้
-ลบข้อมูลได้ใน DynamoDB console. API key หมดอายุใน 365 วัน.
+nginx เสิร์ฟ `dist/` และ proxy `/api/` ไป systemd service `loykrathong26`
+DB อยู่ที่ `/var/lib/loykrathong26/krathong.db` (ลบ/แก้ข้อมูลด้วย sqlite3 บนเครื่อง)

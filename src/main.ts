@@ -143,8 +143,7 @@ async function main() {
   refreshKindPreviews();
   try { nameInput.value = localStorage.getItem('krathong-name') ?? ''; } catch { /* empty */ }
 
-  const store = await createStore();
-  if (store.mode === 'local') console.info('ไม่พบ amplify_outputs.json จึงใช้ localStorage (โหมดทดสอบ)');
+  const store = createStore();
   store.subscribe((items) => { updateCount(items); render(items); });
 
   form.addEventListener('submit', async (e) => {
