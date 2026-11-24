@@ -10,6 +10,7 @@ WORKDIR /app
 COPY server ./server
 COPY --from=build /app/dist ./dist
 ENV HOST=0.0.0.0 PORT=3026 STATIC_DIR=/app/dist DB_PATH=/data/krathong.db
+RUN mkdir /data && chown node:node /data
 VOLUME /data
 USER node
 EXPOSE 3026
