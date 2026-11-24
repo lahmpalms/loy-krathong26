@@ -2,6 +2,8 @@
 import http from 'node:http';
 import { randomUUID } from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
+import { readFile, stat } from 'node:fs/promises';
+import { extname, join, normalize, sep } from 'node:path';
 
 const PORT = Number(process.env.PORT ?? 3026);
 const DB_PATH = process.env.DB_PATH ?? new URL('./krathong.db', import.meta.url).pathname;
@@ -46,8 +48,26 @@ async function readJson(req) {
   return JSON.parse(raw);
 }
 
-http.createServer(async (req, res) => {
-  if (req.url !== '/api/krathongs') return send(res, 404, { error: 'not found' });
+const STATIC_DIR = process.env.STATIC_DIR; // built frontend (dist); unset in dev, where vite serves it
+const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.png': 'image/png', '.ico': 'image/x-icon' };
+
+async function serveStatic(req, res) {
+  const path = decodeURIComponent(new URL(req.url, 'http://x').pathname);
+  const file = normalize(join(STATIC_DIR, path));
+  const inside = file.startsWith(STATIC_DIR + sep);
+  const target = inside && (await stat(file).catch(() => null))?.isFile() ? file : join(STATIC_DIR, 'index.html');
+  res.writeHead(200, {
+    'Content-Type': TYPES[extname(target)] ?? 'application/octet-stream',
+    'Cache-Control': path.startsWith('/assets/') ? 'public, max-age=31536000, immutable' : 'no-cache',
+  });
+  res.end(await readFile(target));
+}
+
+const server = http.createServer(async (req, res) => {
+  if (req.url !== '/api/krathongs') {
+    if (STATIC_DIR && req.method === 'GET' && !req.url.startsWith('/api/')) return serveStatic(req, res).catch(() => send(res, 400, { error: 'bad request' }));
+    return send(res, 404, { error: 'not found' });
+  }
 
   if (req.method === 'GET') return send(res, 200, listAll.all());
 
@@ -67,4 +87,5 @@ http.createServer(async (req, res) => {
   }
 
   send(res, 405, { error: 'method not allowed' });
-}).listen(PORT, '127.0.0.1', () => console.log(`krathong api on 127.0.0.1:${PORT}, db ${DB_PATH}`));
+});
+server.listen(PORT, process.env.HOST ?? '127.0.0.1', () => console.log(`krathong api on 127.0.0.1:${PORT}, db ${DB_PATH}`));

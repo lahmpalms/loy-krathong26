@@ -1,0 +1,11 @@
+# Standalone: does not join or touch any other project's network.
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "8026:3026"
+    volumes:
+      - data:/data
+volumes:
+  data:
