@@ -1,102 +1,104 @@
-# ลอยกระทงออนไลน์ 🪷
+# Online Loy Krathong 🪷
 
-เว็บลอยกระทงออนไลน์ ผู้ใช้ใส่ชื่อ คำอธิษฐาน เลือกแบบกระทงและสี แล้วกดลอย กระทงของทุกคนลอยอยู่ในแม่น้ำเดียวกันและอัปเดตให้เห็นแทบทันที เมื่อจบงาน หน้าแรกจะเปลี่ยนเป็นเครดิตท้ายเรื่อง เลื่อนแสดงชื่อและคำอธิษฐานของทุกคน
+A small web app for floating a krathong online. Visitors enter a name and a wish, pick a krathong style and a color, then float it. Everyone's krathongs drift down the same river and show up for others within a few seconds. When the event ends, the home page turns into end credits that scroll through every name and wish.
 
-ตั้งใจให้เป็นโปรเจกต์ตั้งต้นที่เล็กและอ่านจบได้ในบ่ายเดียว ไม่มี framework ฝั่งหน้าเว็บ ไม่มี dependency ฝั่ง server และใช้ฐานข้อมูลเป็นไฟล์ SQLite ไฟล์เดียว
+It's meant as a starter project small enough to read in an afternoon. The frontend uses no framework, the server has no dependencies, and the database is a single SQLite file.
 
-เอกสารนี้ไล่ตั้งแต่รันบนเครื่องตัวเอง ปรับแต่ง build เป็น Docker เช่า VPS ตั้ง DNS เปิด HTTPS ไปจนถึงสำรองข้อมูลและดูแลหลังขึ้นระบบ ทุกตัวอย่างใช้โดเมนสมมติ `krathong.example.com` และ IP สมมติ `203.0.113.10` ให้แทนด้วยของคุณเอง
+This guide goes end to end: running it locally, customizing it, building it with Docker, renting a VPS, setting up DNS, enabling HTTPS, and keeping it running afterwards. All examples use the placeholder domain `krathong.example.com` and the placeholder IP `203.0.113.10`. Replace them with your own.
 
 ---
 
-## สารบัญ
+## Contents
 
-1. [ฟีเจอร์](#1-ฟีเจอร์)
-2. [สถาปัตยกรรม](#2-สถาปัตยกรรม)
-3. [โครงสร้างไฟล์](#3-โครงสร้างไฟล์)
-4. [สิ่งที่ต้องมี](#4-สิ่งที่ต้องมี)
-5. [รันบนเครื่องตัวเอง](#5-รันบนเครื่องตัวเอง)
-6. [ตัวแปร environment](#6-ตัวแปร-environment)
+1. [Features](#1-features)
+2. [Architecture](#2-architecture)
+3. [Project layout](#3-project-layout)
+4. [Requirements](#4-requirements)
+5. [Run locally](#5-run-locally)
+6. [Environment variables](#6-environment-variables)
 7. [API](#7-api)
-8. [ปรับแต่ง](#8-ปรับแต่ง)
-9. [เปิดงาน / ปิดงาน](#9-เปิดงาน--ปิดงาน)
-10. [รันด้วย Docker บนเครื่องตัวเอง](#10-รันด้วย-docker-บนเครื่องตัวเอง)
-11. [Deploy ขึ้น VPS](#11-deploy-ขึ้น-vps)
-12. [ตั้งค่า DNS](#12-ตั้งค่า-dns)
-13. [HTTPS ด้วย Caddy](#13-https-ด้วย-caddy)
-14. [หน้า Admin](#14-หน้า-admin)
-15. [อัปเดต สำรอง และกู้ข้อมูล](#15-อัปเดต-สำรอง-และกู้ข้อมูล)
-16. [ความปลอดภัย](#16-ความปลอดภัย)
-17. [แก้ปัญหาที่พบบ่อย](#17-แก้ปัญหาที่พบบ่อย)
+8. [Customization](#8-customization)
+9. [Opening and closing the event](#9-opening-and-closing-the-event)
+10. [Run with Docker locally](#10-run-with-docker-locally)
+11. [Deploy to a VPS](#11-deploy-to-a-vps)
+12. [DNS setup](#12-dns-setup)
+13. [HTTPS with Caddy](#13-https-with-caddy)
+14. [Admin page](#14-admin-page)
+15. [Updates, backups and restores](#15-updates-backups-and-restores)
+16. [Security](#16-security)
+17. [Troubleshooting](#17-troubleshooting)
 
 ---
 
-## 1. ฟีเจอร์
+## 1. Features
 
-- ลอยกระทงพร้อมชื่อ (ไม่เกิน 30 ตัวอักษร) และคำอธิษฐาน (ไม่เกิน 80 ตัวอักษร)
-- กระทง 5 แบบ วาดด้วย SVG ล้วน: ใบตอง เบียร์ เอกสาร ขนมปัง กาแฟ OT และเลือกสีได้ 5 สี
-- กระทงลอยเป็นเลน มี perspective และเอฟเฟกต์น้ำ แตะที่กระทงเพื่ออ่านคำอธิษฐาน
-- ดึงรายการใหม่ทุก 5 วินาที (หยุดดึงเมื่อแท็บถูกซ่อน)
-- จำกัดการโพสต์ 6 ครั้งต่อนาทีต่อ IP
-- หน้า `/admin` สำหรับลบกระทงที่ไม่เหมาะสม ตรวจรหัสผ่านฝั่ง server
-- โหมดปิดงาน: server ไม่รับกระทงใหม่ หน้าแรกแสดงเครดิตท้ายเรื่อง
+- Float a krathong with a name (up to 30 characters) and a wish (up to 80 characters)
+- 5 krathong styles drawn in plain SVG: banana leaf (ใบตอง), beer, documents, bread, overtime coffee, in 5 colors
+- Krathongs float in lanes with perspective and water effects. Tap one to read its wish
+- Polls for new krathongs every 5 seconds (paused while the tab is hidden)
+- Rate limit of 6 posts per minute per IP
+- `/admin` page for deleting inappropriate krathongs, with the password checked server-side
+- Closed mode: the server rejects new krathongs and the home page plays the end credits
 
-## 2. สถาปัตยกรรม
+The UI text is in Thai.
+
+## 2. Architecture
 
 ```
- เบราว์เซอร์
+ Browser
      │  HTTPS :443
      ▼
  ┌──────────────┐   http://app:3026   ┌──────────────────────────────┐
  │ Caddy        │ ──────────────────▶ │ Node (server/server.mjs)     │
- │ - TLS อัตโนมัติ │                     │ - /api/*  → JSON API         │
- │ - reverse    │                     │ - อื่น ๆ   → ไฟล์ใน dist/       │
- │   proxy      │                     │ - SQLite (node:sqlite)       │
- └──────────────┘                     └──────────────┬───────────────┘
-                                                     │
+ │ - automatic  │                     │ - /api/*  → JSON API         │
+ │   TLS        │                     │ - else    → files in dist/   │
+ │ - reverse    │                     │ - SQLite (node:sqlite)       │
+ │   proxy      │                     └──────────────┬───────────────┘
+ └──────────────┘                                    │
                                               /data/krathong.db
                                               (docker volume)
 ```
 
-- **Frontend**: Vite + TypeScript ไม่มี framework build ออกมาเป็นไฟล์ static ใน `dist/`
-- **Backend**: `server/server.mjs` ไฟล์เดียว ใช้แค่ built-in ของ Node (`node:http`, `node:sqlite`, `node:crypto`) ต้องใช้ Node 22.13 ขึ้นไป เพราะ `node:sqlite` เปิดใช้โดยไม่ต้องใส่ flag ตั้งแต่เวอร์ชันนั้น
-- **Production**: container เดียวทำทั้ง API และเสิร์ฟหน้าเว็บ โดยมี Caddy อยู่ข้างหน้าเพื่อทำ HTTPS
-- **Development**: Vite เสิร์ฟหน้าเว็บที่พอร์ต 5173 และ proxy `/api` ไปที่ Node พอร์ต 3026
+- **Frontend**: Vite + TypeScript, no framework. Builds to static files in `dist/`.
+- **Backend**: a single file, `server/server.mjs`, using only Node built-ins (`node:http`, `node:sqlite`, `node:crypto`). It needs Node 22.13 or newer, the first version where `node:sqlite` works without a flag.
+- **Production**: one container serves both the API and the frontend, with Caddy in front for HTTPS.
+- **Development**: Vite serves the frontend on port 5173 and proxies `/api` to Node on port 3026.
 
-## 3. โครงสร้างไฟล์
+## 3. Project layout
 
 ```
 .
-├── index.html          # โครง HTML, ฟอร์ม, ฟอนต์ Mitr
+├── index.html          # HTML shell, form, Mitr font
 ├── src/
-│   ├── main.ts         # จุดเริ่มต้น: วาดแม่น้ำ ดาว ฟอร์ม เลน admin
-│   ├── store.ts        # เรียก API (GET/POST/DELETE) และ polling
-│   ├── kinds.ts        # SVG ของกระทงแต่ละแบบ
-│   ├── credits.ts      # เครดิตท้ายเรื่องตอนปิดงาน
+│   ├── main.ts         # entry point: river, stars, form, lanes, admin
+│   ├── store.ts        # API calls (GET/POST/DELETE) and polling
+│   ├── kinds.ts        # SVG drawing for each krathong style
+│   ├── credits.ts      # end credits shown after the event
 │   └── style.css
 ├── server/
-│   └── server.mjs      # API + static server + SQLite
-├── vite.config.ts      # proxy /api ไป 127.0.0.1:3026 ตอน dev
-├── Dockerfile          # multi-stage: build ด้วย Node แล้วรันด้วย Node
-├── compose.yml         # compose ตัวอย่าง (ดูหัวข้อ 11 ก่อนใช้)
+│   └── server.mjs      # API + static file server + SQLite
+├── vite.config.ts      # proxies /api to 127.0.0.1:3026 in dev
+├── Dockerfile          # multi-stage: build with Node, run with Node
+├── compose.yml         # sample compose file (read section 11 first)
 └── package.json
 ```
 
-## 4. สิ่งที่ต้องมี
+## 4. Requirements
 
-| ใช้ทำอะไร | ต้องมี |
+| For | You need |
 |---|---|
-| พัฒนาบนเครื่อง | Node.js **22.13+** และ npm, git |
-| รันด้วย Docker | Docker Engine + Docker Compose v2 |
-| ขึ้นระบบจริง | VPS 1 เครื่อง (1 vCPU / 1 GB RAM พอ), โดเมน 1 ชื่อ |
+| Local development | Node.js **22.13+** with npm, git |
+| Running with Docker | Docker Engine + Docker Compose v2 |
+| Production | One VPS (1 vCPU / 1 GB RAM is enough) and a domain |
 
-เช็กเวอร์ชัน:
+Check versions:
 
 ```bash
-node -v            # ต้องได้ v22.13.0 ขึ้นไป
+node -v            # must be v22.13.0 or newer
 docker compose version
 ```
 
-## 5. รันบนเครื่องตัวเอง
+## 5. Run locally
 
 ```bash
 git clone https://github.com/<your-account>/loy-krathong.git
@@ -104,100 +106,100 @@ cd loy-krathong
 npm install
 ```
 
-เปิด 2 terminal:
+Open two terminals:
 
 ```bash
-# terminal 1: API ที่ 127.0.0.1:3026 ฐานข้อมูลอยู่ที่ server/krathong.db
+# terminal 1: API on 127.0.0.1:3026, database at server/krathong.db
 npm run api
 
-# terminal 2: หน้าเว็บที่ http://localhost:5173
+# terminal 2: frontend on http://localhost:5173
 npm run dev
 ```
 
-ถ้าต้องการทดสอบหน้า admin ตอน dev ให้ส่งรหัสผ่านให้ API:
+To try the admin page in dev, give the API a password:
 
 ```bash
 ADMIN_PASSWORD=devpass npm run api
 ```
 
-แล้วเปิด http://localhost:5173/admin
+Then open http://localhost:5173/admin
 
-คำสั่งอื่น:
+Other commands:
 
 ```bash
-npm run build     # type-check (tsc) แล้ว build ลง dist/
-npm run preview   # เปิดดูผล build ด้วย vite
+npm run build     # type-check (tsc), then build into dist/
+npm run preview   # preview the build with vite
 ```
 
-ทดลองให้ Node เสิร์ฟผล build เองแบบเดียวกับ production:
+To have Node serve the build the same way production does:
 
 ```bash
 npm run build
-STATIC_DIR="$PWD/dist" npm run api   # เปิด http://127.0.0.1:3026
+STATIC_DIR="$PWD/dist" npm run api   # open http://127.0.0.1:3026
 ```
 
-> `STATIC_DIR` ต้องเป็น path เต็ม (absolute) เพราะ server ใช้มันตรวจว่าไฟล์ที่ขออยู่ในโฟลเดอร์นี้จริง
+> `STATIC_DIR` must be an absolute path. The server uses it to check that requested files are inside that folder.
 
-ล้างข้อมูลทดลอง: หยุด API แล้วลบ `server/krathong.db*`
+To wipe test data, stop the API and delete `server/krathong.db*`.
 
-## 6. ตัวแปร environment
+## 6. Environment variables
 
-ทั้งหมดอ่านใน `server/server.mjs`
+All of these are read in `server/server.mjs`.
 
-| ตัวแปร | ค่าเริ่มต้น | ความหมาย |
+| Variable | Default | Meaning |
 |---|---|---|
-| `PORT` | `3026` | พอร์ตที่ Node ฟัง |
-| `HOST` | `127.0.0.1` | interface ที่ฟัง ใน Docker ตั้งเป็น `0.0.0.0` แล้ว |
-| `DB_PATH` | `server/krathong.db` | ไฟล์ SQLite ใน Docker คือ `/data/krathong.db` |
-| `STATIC_DIR` | ไม่ตั้ง | โฟลเดอร์ `dist` ถ้าไม่ตั้ง server ตอบแค่ `/api/*` |
-| `ADMIN_PASSWORD` | ไม่ตั้ง | รหัสหน้า admin **ถ้าไม่ตั้ง API admin จะปิดทั้งหมด** |
-| `CLOSED` | ไม่ตั้ง | ตั้งค่าอะไรก็ได้ที่ไม่ว่าง = ปิดรับกระทงใหม่ (ดูหัวข้อ 9) |
+| `PORT` | `3026` | Port Node listens on |
+| `HOST` | `127.0.0.1` | Interface to listen on. The Docker image sets `0.0.0.0` |
+| `DB_PATH` | `server/krathong.db` | SQLite file. In Docker it's `/data/krathong.db` |
+| `STATIC_DIR` | unset | The `dist` folder. If unset, the server only answers `/api/*` |
+| `ADMIN_PASSWORD` | unset | Admin password. **If unset, the admin API is disabled entirely** |
+| `CLOSED` | unset | Any non-empty value stops new krathongs (see section 9) |
 
-> `CLOSED=0` ก็ถือว่า **ปิด** เพราะเป็น string ไม่ว่าง ถ้าจะเปิดงานให้ลบตัวแปรนี้ออก
+> `CLOSED=0` also counts as **closed**, because it's a non-empty string. To open the event, remove the variable.
 
-ตัวเลขที่ฝังในโค้ด ปรับได้ที่ต้นไฟล์ `server/server.mjs`:
+Limits hard-coded at the top of `server/server.mjs`:
 
-- `POSTS_PER_MINUTE = 6` จำนวนโพสต์ต่อนาทีต่อ IP
-- `ADMIN_TRIES_PER_MINUTE = 5` จำนวนครั้งที่ใส่รหัส admin ผิดได้ต่อนาทีต่อ IP
+- `POSTS_PER_MINUTE = 6`: posts per minute per IP
+- `ADMIN_TRIES_PER_MINUTE = 5`: wrong admin passwords allowed per minute per IP
 
 ## 7. API
 
-ทุก response เป็น JSON และส่ง `Cache-Control: no-store`
+Every response is JSON with `Cache-Control: no-store`.
 
-| Method | Path | Auth | คำอธิบาย |
+| Method | Path | Auth | Description |
 |---|---|---|---|
-| `GET` | `/api/krathongs` | – | รายการกระทงทั้งหมด เรียงตามเวลา |
-| `POST` | `/api/krathongs` | – | ลอยกระทงใหม่ |
-| `GET` | `/api/admin` | Bearer | ตรวจรหัส admin |
-| `DELETE` | `/api/krathongs/:id` | Bearer | ลบกระทง |
+| `GET` | `/api/krathongs` | – | All krathongs, oldest first |
+| `POST` | `/api/krathongs` | – | Float a new krathong |
+| `GET` | `/api/admin` | Bearer | Check the admin password |
+| `DELETE` | `/api/krathongs/:id` | Bearer | Delete a krathong |
 
-ตัวอย่าง:
+Examples:
 
 ```bash
-# ลอยกระทง
+# float a krathong
 curl -X POST http://127.0.0.1:3026/api/krathongs \
   -H 'Content-Type: application/json' \
-  -d '{"name":"มะลิ","wish":"ขอให้สุขภาพแข็งแรง","color":"#ffd23f","kind":"classic"}'
+  -d '{"name":"Mali","wish":"Good health for everyone","color":"#ffd23f","kind":"classic"}'
 
-# ดูทั้งหมด
+# list all
 curl http://127.0.0.1:3026/api/krathongs
 
-# ลบ (admin)
+# delete (admin)
 curl -X DELETE http://127.0.0.1:3026/api/krathongs/<uuid> \
   -H "Authorization: Bearer $ADMIN_PASSWORD"
 ```
 
-กติกาตรวจข้อมูลของ `POST`:
+`POST` validation:
 
-- `name` string ไม่ว่าง ยาวไม่เกิน 30
-- `wish` string ไม่ว่าง ยาวไม่เกิน 80
-- `color` รูปแบบ `#rrggbb`
-- `kind` string ไม่เกิน 20 หรือไม่ส่งก็ได้ (หน้าเว็บจะแสดงเป็น `classic` ถ้าไม่รู้จัก)
-- body ใหญ่ไม่เกิน 4 KB
+- `name`: non-empty string, at most 30 characters
+- `wish`: non-empty string, at most 80 characters
+- `color`: `#rrggbb`
+- `kind`: string of at most 20 characters, or omitted (the frontend falls back to `classic` for unknown kinds)
+- Body at most 4 KB
 
-รหัสสถานะ: `201` สำเร็จ, `400` ข้อมูลผิด, `403` ปิดงานแล้ว, `429` ส่งถี่เกิน, `401` รหัส admin ผิด
+Status codes: `201` created, `400` invalid input, `403` event closed, `429` too many posts, `401` wrong admin password.
 
-ตารางในฐานข้อมูล:
+Database table:
 
 ```sql
 CREATE TABLE krathong (
@@ -210,20 +212,20 @@ CREATE TABLE krathong (
 );
 ```
 
-server สร้างตารางให้เองตอนเริ่ม ไม่ต้องรัน migration
+The server creates the table on startup. There are no migrations to run.
 
-## 8. ปรับแต่ง
+## 8. Customization
 
-| อยากเปลี่ยน | แก้ที่ |
+| To change | Edit |
 |---|---|
-| ปี / ชื่องาน | `index.html` (`<title>`, `<h1>`) และ `src/credits.ts` |
-| ชุดสีให้เลือก | `COLORS` ใน `src/main.ts` |
-| แบบกระทง | `src/kinds.ts` เพิ่มฟังก์ชันวาด SVG แล้วใส่ใน `KINDS` |
-| ฟอนต์ | ลิงก์ Google Fonts ใน `index.html` และ `font-family` ใน `src/style.css` |
-| ความถี่การดึงข้อมูล | `POLL_MS` ใน `src/store.ts` |
-| ความยาวชื่อ/คำอธิษฐาน | `maxlength` ใน `index.html` **และ** `str(..., 30/80)` ใน `server/server.mjs` ให้ตรงกัน |
+| Year / event name | `index.html` (`<title>`, `<h1>`) and `src/credits.ts` |
+| Color choices | `COLORS` in `src/main.ts` |
+| Krathong styles | `src/kinds.ts`: add an SVG drawing function and register it in `KINDS` |
+| Font | Google Fonts link in `index.html` and `font-family` in `src/style.css` |
+| Polling interval | `POLL_MS` in `src/store.ts` |
+| Name / wish length | `maxlength` in `index.html` **and** `str(..., 30/80)` in `server/server.mjs`. Keep them in sync |
 
-เพิ่มกระทงแบบใหม่: ทุกแบบวาดใน `viewBox` 100×90 เส้นน้ำอยู่ราว y=58 ตัวอย่าง:
+Adding a krathong style: every drawing uses a 100×90 `viewBox` with the waterline near y=58. For example:
 
 ```ts
 const lotus = (c: string) => `
@@ -233,32 +235,32 @@ const lotus = (c: string) => `
   ${flame(50, 10)}`;
 
 export const KINDS = {
-  // ...แบบเดิม
+  // ...existing styles
   lotus: { label: 'ดอกบัว', draw: lotus },
 } as const;
 ```
 
-ชื่อ key (`lotus`) คือค่าที่เก็บในฐานข้อมูล ต้องยาวไม่เกิน 20 ตัวอักษร
+The key (`lotus`) is what gets stored in the database, so keep it to 20 characters or fewer.
 
-## 9. เปิดงาน / ปิดงาน
+## 9. Opening and closing the event
 
-โค้ดใน repo นี้อยู่ใน **สถานะปิดงาน** (งานจบแล้ว) มี 2 จุดที่ต้องแก้ให้ตรงกัน:
+The code in this repo is in **closed mode** (the event is over). Two places have to agree:
 
-| จุด | ปิดงาน (ค่าปัจจุบัน) | เปิดงาน |
+| Where | Closed (current) | Open |
 |---|---|---|
-| Server: `CLOSED` ใน `compose.yml` | `CLOSED: "1"` → `POST` ได้ `403` | ลบบรรทัด `environment:` และ `CLOSED` ออก |
-| Frontend: `main()` ใน `src/main.ts` | `document.body.classList.add('ended')` และเรียก `showCredits()` | ดูด้านล่าง |
+| Server: `CLOSED` in `compose.yml` | `CLOSED: "1"`, so `POST` returns `403` | Remove the `environment:` and `CLOSED` lines |
+| Frontend: `main()` in `src/main.ts` | Calls `document.body.classList.add('ended')` and `showCredits()` | See below |
 
-เปิดงานฝั่ง frontend: ใน `src/main.ts` ฟังก์ชัน `main()`
+To open the frontend, in `main()` in `src/main.ts`:
 
-1. ลบบรรทัด `document.body.classList.add('ended');`
-2. เปลี่ยน `let creditsShown = isAdmin;` เป็น `let creditsShown = true;` เพื่อไม่ให้เครดิตขึ้น
+1. Delete the line `document.body.classList.add('ended');`
+2. Change `let creditsShown = isAdmin;` to `let creditsShown = true;` so the credits never start
 
-ปิดงานเมื่องานจบ: ทำย้อนกลับ แล้ว build และ deploy ใหม่ (หัวข้อ 15) ข้อมูลเดิมยังอยู่ครบ และ `/admin` ยังใช้ลบได้ตามปกติ
+To close it again when the event ends, reverse both changes, then rebuild and redeploy (section 15). Existing data stays, and `/admin` still works for deleting.
 
-## 10. รันด้วย Docker บนเครื่องตัวเอง
+## 10. Run with Docker locally
 
-`compose.yml` ที่อยู่ใน repo ผูกพอร์ตกับ IP ของเครื่องหนึ่งโดยเฉพาะ ใช้กับเครื่องอื่นไม่ได้ ให้รันด้วย `docker run` แทน:
+The `compose.yml` in this repo binds the port to one specific host's IP, so it won't work on other machines. Use `docker run` instead:
 
 ```bash
 docker build -t loy-krathong .
@@ -269,37 +271,37 @@ docker run --rm -p 127.0.0.1:8026:3026 \
   loy-krathong
 ```
 
-เปิด http://127.0.0.1:8026
+Open http://127.0.0.1:8026
 
-Dockerfile ทำอะไร:
+What the Dockerfile does:
 
-1. stage `build`: `npm ci` แล้ว `npm run build` ได้ `dist/`
-2. stage สุดท้าย: คัดลอกแค่ `server/` กับ `dist/` รันด้วย user `node` (ไม่ใช่ root) ฐานข้อมูลอยู่ที่ volume `/data`
+1. `build` stage: `npm ci`, then `npm run build`, producing `dist/`
+2. Final stage: copies only `server/` and `dist/` and runs as the `node` user (not root). The database lives in the `/data` volume
 
-## 11. Deploy ขึ้น VPS
+## 11. Deploy to a VPS
 
-ภาพรวม: VPS 1 เครื่อง รัน 2 container ผ่าน Docker Compose คือ `app` (โปรเจกต์นี้) และ `caddy` (HTTPS + reverse proxy) มีแค่ Caddy ที่เปิดพอร์ตสู่ภายนอก
+Overview: one VPS running two containers with Docker Compose: `app` (this project) and `caddy` (HTTPS and reverse proxy). Only Caddy is exposed to the internet.
 
-### 11.1 เช่า VPS
+### 11.1 Rent a VPS
 
-ผู้ให้บริการไหนก็ได้ (DigitalOcean, Vultr, Linode, Hetzner, AWS Lightsail, ผู้ให้บริการในไทย ฯลฯ)
+Any provider works (DigitalOcean, Vultr, Linode, Hetzner, AWS Lightsail, a local provider, and so on).
 
 - OS: **Ubuntu 24.04 LTS**
-- สเปก: 1 vCPU / 1 GB RAM / 20 GB disk พอ
-- ตอนสร้าง ใส่ SSH public key ของคุณ (สร้างด้วย `ssh-keygen -t ed25519` ถ้ายังไม่มี)
-- จด **IPv4** (และ **IPv6** ถ้ามี) ของเครื่องไว้ ใช้ตอนตั้ง DNS
+- Size: 1 vCPU / 1 GB RAM / 20 GB disk is enough
+- Add your SSH public key when creating it (generate one with `ssh-keygen -t ed25519` if you don't have one)
+- Note the machine's **IPv4** address (and **IPv6** if it has one). You'll need them for DNS
 
-> ถ้าผู้ให้บริการมี firewall ในหน้า console (security group) ให้เปิดขาเข้า TCP 22, 80, 443 และ UDP 443 (HTTP/3)
+> If the provider has a firewall in its console (security groups), allow inbound TCP 22, 80, 443 and UDP 443 (HTTP/3).
 
-### 11.2 ตั้งค่าเครื่องเบื้องต้น
+### 11.2 Basic server setup
 
 ```bash
 ssh root@203.0.113.10
 
-# อัปเดตระบบ
+# update the system
 apt update && apt upgrade -y
 
-# สร้าง user สำหรับทำงาน (ไม่ใช้ root ตรง ๆ)
+# create a working user instead of using root directly
 adduser deploy
 usermod -aG sudo deploy
 rsync --archive --chown=deploy:deploy ~/.ssh /home/deploy
@@ -312,16 +314,16 @@ ufw allow 443/udp
 ufw enable
 ```
 
-ลอง login ด้วย `ssh deploy@203.0.113.10` ให้ได้ก่อน จากนั้นจะปิดการ login ด้วยรหัสผ่านก็ได้ โดยแก้ `/etc/ssh/sshd_config` ให้ `PasswordAuthentication no` แล้ว `sudo systemctl restart ssh`
+Make sure `ssh deploy@203.0.113.10` works first. After that you can turn off password logins by setting `PasswordAuthentication no` in `/etc/ssh/sshd_config` and running `sudo systemctl restart ssh`.
 
-> **ข้อควรรู้:** Docker เขียนกฎ iptables เองและ**ข้าม ufw** พอร์ตไหนที่ประกาศใน `ports:` จะเปิดสู่อินเทอร์เน็ตทันทีแม้ ufw จะไม่อนุญาต ด้วยเหตุนี้ compose ด้านล่างจึงไม่ประกาศ `ports:` ให้ `app` เลย
+> **Note:** Docker writes its own iptables rules and **bypasses ufw**. Any port listed under `ports:` is open to the internet even if ufw doesn't allow it. That's why the compose file below gives `app` no `ports:` at all.
 
-### 11.3 ติดตั้ง Docker
+### 11.3 Install Docker
 
 ```bash
 curl -fsSL https://get.docker.com | sudo sh
 sudo usermod -aG docker deploy
-exit   # ออกแล้ว ssh เข้าใหม่เพื่อให้กลุ่ม docker มีผล
+exit   # log out and back in so the docker group takes effect
 ```
 
 ```bash
@@ -330,7 +332,7 @@ docker run --rm hello-world
 docker compose version
 ```
 
-### 11.4 ดึงโค้ด
+### 11.4 Get the code
 
 ```bash
 sudo mkdir -p /opt/loy-krathong
@@ -339,19 +341,19 @@ git clone https://github.com/<your-account>/loy-krathong.git /opt/loy-krathong
 cd /opt/loy-krathong
 ```
 
-### 11.5 ตั้งรหัส admin
+### 11.5 Set the admin password
 
 ```bash
 echo "ADMIN_PASSWORD=$(openssl rand -base64 24)" > .env
 chmod 600 .env
-cat .env   # จดรหัสนี้ไว้ ใช้เข้า /admin
+cat .env   # save this password; you'll use it on /admin
 ```
 
-`.env` อยู่ใน `.gitignore` แล้ว จะไม่ถูก commit
+`.env` is already in `.gitignore`, so it won't be committed.
 
-### 11.6 สร้างไฟล์ compose สำหรับ production
+### 11.6 Create a production compose file
 
-สร้าง `compose.prod.yml` ที่ root ของโปรเจกต์:
+Create `compose.prod.yml` in the project root:
 
 ```yaml
 services:
@@ -360,10 +362,10 @@ services:
     restart: unless-stopped
     env_file: .env
     # environment:
-    #   CLOSED: "1"    # เปิดบรรทัดนี้เมื่อจบงาน (ดูหัวข้อ 9)
+    #   CLOSED: "1"    # uncomment when the event ends (see section 9)
     volumes:
       - data:/data
-    # ไม่มี ports: เข้าถึงได้เฉพาะจาก caddy ผ่าน network ภายใน
+    # no ports: only reachable from caddy over the internal network
 
   caddy:
     image: caddy:2
@@ -374,7 +376,7 @@ services:
       - "443:443/udp"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddy_data:/data       # ใบรับรอง TLS (ห้ามลบ)
+      - caddy_data:/data       # TLS certificates (don't delete)
       - caddy_config:/config
     depends_on:
       - app
@@ -385,7 +387,7 @@ volumes:
   caddy_config:
 ```
 
-และ `Caddyfile`:
+And a `Caddyfile`:
 
 ```caddyfile
 krathong.example.com {
@@ -393,17 +395,17 @@ krathong.example.com {
 	reverse_proxy app:3026
 }
 
-# ถ้าต้องการให้ www ชี้กลับมาที่โดเมนหลัก
+# optional: redirect www to the main domain
 www.krathong.example.com {
 	redir https://krathong.example.com{uri} permanent
 }
 ```
 
-ยังไม่ต้อง `up` ตอนนี้ ไปตั้ง DNS ก่อน (หัวข้อ 12) เพราะ Caddy จะขอใบรับรองทันทีที่เริ่ม ถ้า DNS ยังไม่ชี้มาจะขอไม่ผ่าน และ Let's Encrypt มีเพดานจำนวนครั้งที่ขอพลาดได้
+Don't run `up` yet. Set up DNS first (section 12). Caddy requests a certificate as soon as it starts. If DNS doesn't point at the server yet, the request fails, and Let's Encrypt limits how many failed attempts you get.
 
-### 11.7 เริ่มระบบ
+### 11.7 Start it
 
-หลัง DNS ชี้มาที่เครื่องแล้ว:
+Once DNS points at the server:
 
 ```bash
 cd /opt/loy-krathong
@@ -411,91 +413,91 @@ docker compose -f compose.prod.yml -p loy-krathong up -d --build
 docker compose -f compose.prod.yml -p loy-krathong logs -f caddy
 ```
 
-รอจนเห็น log ว่า `certificate obtained successfully` แล้วเปิด https://krathong.example.com
+Wait for `certificate obtained successfully` in the log, then open https://krathong.example.com
 
-ตรวจจากเครื่องตัวเอง:
+Check from your own machine:
 
 ```bash
 curl -I https://krathong.example.com
 curl https://krathong.example.com/api/krathongs
 ```
 
-`restart: unless-stopped` ทำให้ทั้งสอง container ขึ้นเองหลังรีบูตเครื่อง
+`restart: unless-stopped` brings both containers back up after a reboot.
 
-## 12. ตั้งค่า DNS
+## 12. DNS setup
 
-### 12.1 ซื้อโดเมน
+### 12.1 Get a domain
 
-ซื้อจาก registrar ไหนก็ได้ เช่น Cloudflare Registrar, Namecheap, Porkbun หรือ registrar ในไทยสำหรับ `.co.th`/`.in.th` ถ้าจะใช้ DNS ของ Cloudflare ให้เปลี่ยน nameserver ที่ registrar เป็นของ Cloudflare ตามที่หน้า Cloudflare บอก (อาจใช้เวลาหลายชั่วโมง)
+Any registrar works, for example Cloudflare Registrar, Namecheap or Porkbun. To use Cloudflare DNS with a domain registered elsewhere, change the nameservers at your registrar to the ones Cloudflare gives you (this can take several hours).
 
-จะใช้โดเมนหลัก (`example.com`) หรือ subdomain (`krathong.example.com`) ก็ได้ ตัวอย่างทั้งหมดใช้ subdomain
+You can use the apex domain (`example.com`) or a subdomain (`krathong.example.com`). The examples here use a subdomain.
 
-### 12.2 เพิ่ม record
+### 12.2 Add records
 
-ในหน้าจัดการ DNS ของโดเมน:
+In your domain's DNS settings:
 
 | Type | Name | Value | TTL |
 |---|---|---|---|
-| `A` | `krathong` | `203.0.113.10` (IPv4 ของ VPS) | 300 หรือ Auto |
-| `AAAA` | `krathong` | IPv6 ของ VPS | 300 หรือ Auto |
-| `CNAME` | `www.krathong` | `krathong.example.com` | 300 หรือ Auto |
+| `A` | `krathong` | `203.0.113.10` (the VPS IPv4) | 300 or Auto |
+| `AAAA` | `krathong` | The VPS IPv6 | 300 or Auto |
+| `CNAME` | `www.krathong` | `krathong.example.com` | 300 or Auto |
 
-- `Name` ใส่แค่ส่วนหน้าโดเมน บางเจ้าใช้ `@` แทนโดเมนหลัก
-- ใส่ `AAAA` **เฉพาะเมื่อ** VPS มี IPv6 ที่ใช้ได้จริง ถ้าใส่ IPv6 ที่ใช้ไม่ได้ Let's Encrypt อาจตรวจผ่าน IPv6 แล้วล้มเหลว
-- `www` ไม่จำเป็น ถ้าไม่ใส่ก็ลบ block `www.` ออกจาก `Caddyfile`
-- TTL ต่ำ (300 วินาที) ช่วยให้แก้ไขมีผลเร็วช่วงตั้งระบบ ตั้งให้สูงขึ้นทีหลังได้
+- `Name` is only the part before your domain. Some providers use `@` for the apex
+- Add `AAAA` **only if** the VPS has working IPv6. A broken IPv6 address can make Let's Encrypt validate over IPv6 and fail
+- `www` is optional. If you skip it, remove the `www.` block from the `Caddyfile`
+- A low TTL (300 seconds) makes changes take effect quickly during setup. You can raise it later
 
-### 12.3 ตรวจว่า DNS ชี้ถูก
+### 12.3 Check DNS
 
 ```bash
 dig +short krathong.example.com A
 dig +short krathong.example.com AAAA
-# หรือถามจาก resolver สาธารณะ
+# or ask public resolvers
 dig +short krathong.example.com @1.1.1.1
 dig +short krathong.example.com @8.8.8.8
 ```
 
-ต้องได้ IP ของ VPS ก่อนจึงไป `up` ในหัวข้อ 11.7 บน Windows ใช้ `nslookup krathong.example.com 1.1.1.1`
+You should get the VPS IP before running `up` in section 11.7. On Windows, use `nslookup krathong.example.com 1.1.1.1`.
 
-### 12.4 ถ้าใช้ Cloudflare
+### 12.4 If you use Cloudflare
 
-ตอนตั้งระบบครั้งแรก แนะนำให้ record เป็น **DNS only (เมฆสีเทา)** Caddy จะได้ขอใบรับรองตรง ๆ และ server เห็น IP จริงของผู้ใช้
+For the first setup, keep the record as **DNS only (grey cloud)**. Caddy can then get its certificate directly, and the server sees real client IPs.
 
-ถ้าจะเปิด **Proxied (เมฆสีส้ม)** ภายหลัง:
+If you switch to **Proxied (orange cloud)** later:
 
-- ตั้ง SSL/TLS mode เป็น **Full (strict)** ไม่งั้นจะเกิด redirect loop หรือไม่ได้เข้ารหัสช่วง Cloudflare → VPS
-- server จะเห็น IP ของ Cloudflare แทน IP ผู้ใช้ ทำให้ rate limit นับรวมผู้ใช้หลายคนเป็น IP เดียว แก้โดยให้ Caddy เชื่อ header ของ Cloudflare ใส่ global options ไว้บนสุดของ `Caddyfile`:
+- Set the SSL/TLS mode to **Full (strict)**. Otherwise you'll get a redirect loop, or traffic between Cloudflare and the VPS won't be encrypted
+- The server will see Cloudflare's IPs instead of your visitors', so the rate limit lumps many visitors into one IP. Fix this by having Caddy trust Cloudflare's header. Put these global options at the top of the `Caddyfile`:
 
   ```caddyfile
   {
   	servers {
-  		trusted_proxies static <ใส่ช่วง IP จาก https://www.cloudflare.com/ips/>
+  		trusted_proxies static <IP ranges from https://www.cloudflare.com/ips/>
   		client_ip_headers CF-Connecting-IP
   	}
   }
   ```
 
-### 12.5 CAA record (ไม่บังคับ)
+### 12.5 CAA record (optional)
 
-ล็อกให้ออกใบรับรองได้เฉพาะ Let's Encrypt:
+Allow only Let's Encrypt to issue certificates for the domain:
 
 | Type | Name | Value |
 |---|---|---|
 | `CAA` | `krathong` | `0 issue "letsencrypt.org"` |
 
-ถ้าใช้ Cloudflare proxied ข้ามข้อนี้ไป เพราะ Cloudflare ใช้ CA อื่นด้วย
+Skip this if you use Cloudflare proxied mode, since Cloudflare also uses other CAs.
 
-## 13. HTTPS ด้วย Caddy
+## 13. HTTPS with Caddy
 
-Caddy จัดการให้เองทั้งหมด: ขอใบรับรองจาก Let's Encrypt, redirect HTTP → HTTPS, ต่ออายุก่อนหมด เงื่อนไขที่ต้องครบ:
+Caddy handles all of it: it gets a certificate from Let's Encrypt, redirects HTTP to HTTPS, and renews before expiry. It needs:
 
-1. DNS ของโดเมนชี้มาที่ VPS
-2. พอร์ต 80 และ 443 เปิดจากอินเทอร์เน็ต (ทั้ง ufw และ firewall ของผู้ให้บริการ)
-3. ไม่มีโปรแกรมอื่นจับพอร์ต 80/443 อยู่ (เช็กด้วย `sudo ss -tlnp | grep -E ':80|:443'`)
+1. The domain's DNS pointing at the VPS
+2. Ports 80 and 443 open from the internet (in both ufw and the provider's firewall)
+3. Nothing else listening on 80/443 (check with `sudo ss -tlnp | grep -E ':80|:443'`)
 
-ใบรับรองเก็บใน volume `caddy_data` อย่าลบ volume นี้ ถ้าลบ Caddy ต้องขอใหม่และอาจชนเพดานของ Let's Encrypt
+Certificates are stored in the `caddy_data` volume. Don't delete it, or Caddy has to request new ones and may hit Let's Encrypt's rate limits.
 
-**มี reverse proxy อยู่แล้ว (nginx, Traefik, Caddy บน host)?** ไม่ต้องใช้ service `caddy` ใน compose ให้เปิดพอร์ต `app` เฉพาะ localhost แล้วชี้ proxy ไปที่นั่น:
+**Already have a reverse proxy (nginx, Traefik, Caddy on the host)?** Skip the `caddy` service. Publish the `app` port on localhost only and point your proxy at it:
 
 ```yaml
 services:
@@ -505,7 +507,7 @@ services:
       - "127.0.0.1:8026:3026"
 ```
 
-ตัวอย่าง nginx (ออกใบรับรองด้วย `certbot --nginx`):
+nginx example (get a certificate with `certbot --nginx`):
 
 ```nginx
 server {
@@ -513,33 +515,33 @@ server {
     location / {
         proxy_pass http://127.0.0.1:8026;
         proxy_set_header Host $host;
-        proxy_set_header X-Forwarded-For $remote_addr;   # เขียนทับ ไม่ใช่ต่อท้าย
+        proxy_set_header X-Forwarded-For $remote_addr;   # overwrite, don't append
         proxy_set_header X-Forwarded-Proto $scheme;
     }
 }
 ```
 
-> ใช้ `$remote_addr` ไม่ใช่ `$proxy_add_x_forwarded_for` เพราะ server อ่าน IP ตัวแรกใน `X-Forwarded-For` ถ้าต่อท้าย ผู้ใช้จะปลอม IP เพื่อหลบ rate limit ได้ (รายละเอียดในหัวข้อ 16)
+> Use `$remote_addr`, not `$proxy_add_x_forwarded_for`. The server reads the first IP in `X-Forwarded-For`, so if the proxy appends, clients can spoof their IP to dodge the rate limit (see section 16).
 
-## 14. หน้า Admin
+## 14. Admin page
 
-1. เปิด `https://krathong.example.com/admin`
-2. ใส่รหัสจาก `.env` (`ADMIN_PASSWORD`)
-3. แตะกระทงที่ต้องการ แล้วกดปุ่มลบ
+1. Open `https://krathong.example.com/admin`
+2. Enter the password from `.env` (`ADMIN_PASSWORD`)
+3. Tap a krathong, then press its delete button
 
-รหัสถูกเก็บใน `sessionStorage` ของแท็บนั้น ปิดแท็บแล้วต้องใส่ใหม่ ใส่ผิดเกิน 5 ครั้งต่อนาทีจะถูกพักไว้ 1 นาที
+The password is kept in that tab's `sessionStorage`, so you'll need to enter it again after closing the tab. More than 5 wrong attempts in a minute locks you out for a minute.
 
-เปลี่ยนรหัส: แก้ `.env` แล้ว `docker compose -f compose.prod.yml -p loy-krathong up -d` (compose จะสร้าง container ใหม่เมื่อ env เปลี่ยน)
+To change the password, edit `.env` and run `docker compose -f compose.prod.yml -p loy-krathong up -d`. Compose recreates the container when its env changes.
 
-## 15. อัปเดต สำรอง และกู้ข้อมูล
+## 15. Updates, backups and restores
 
-ตั้ง alias ไว้พิมพ์สั้นลง (ใส่ใน `~/.bashrc` ของ VPS):
+An alias saves typing (put it in `~/.bashrc` on the VPS):
 
 ```bash
 alias dc='docker compose -f /opt/loy-krathong/compose.prod.yml -p loy-krathong'
 ```
 
-### อัปเดตโค้ด
+### Update the code
 
 ```bash
 cd /opt/loy-krathong
@@ -547,9 +549,9 @@ git pull
 dc up -d --build
 ```
 
-ข้อมูลอยู่ใน volume จึงไม่หายเวลาสร้าง container ใหม่
+Data lives in a volume, so it survives the container being rebuilt.
 
-### ดู log และสถานะ
+### Logs and status
 
 ```bash
 dc ps
@@ -557,9 +559,9 @@ dc logs -f app
 dc logs -f caddy
 ```
 
-### สำรองฐานข้อมูล
+### Back up the database
 
-ใช้ `VACUUM INTO` ของ SQLite ได้สำเนาที่สอดคล้องกันโดยไม่ต้องหยุดระบบ:
+SQLite's `VACUUM INTO` produces a consistent copy without stopping the app:
 
 ```bash
 dc exec app node --disable-warning=ExperimentalWarning -e \
@@ -568,65 +570,59 @@ dc cp app:/data/backup.db ./krathong-$(date +%F).db
 dc exec app rm /data/backup.db
 ```
 
-ดึงไฟล์กลับเครื่องตัวเอง:
+Copy it to your own machine:
 
 ```bash
 scp deploy@203.0.113.10:/opt/loy-krathong/krathong-*.db .
 ```
 
-> อย่าคัดลอก `krathong.db` ตรง ๆ ขณะระบบทำงาน ฐานข้อมูลใช้โหมด WAL ข้อมูลล่าสุดอาจยังอยู่ในไฟล์ `-wal`
+> Don't copy `krathong.db` directly while the app is running. The database uses WAL mode, so recent writes may still be in the `-wal` file.
 
-### กู้ข้อมูล
+### Restore
+
+Stop the app, then write the backup into the volume with a throwaway container:
 
 ```bash
 dc stop app
-dc cp ./krathong-2026-11-25.db app:/data/krathong.db
-dc exec -u root app sh -c 'rm -f /data/krathong.db-wal /data/krathong.db-shm; chown node:node /data/krathong.db' 2>/dev/null || true
-dc start app
-```
-
-ถ้า `exec` ไม่ได้เพราะ container หยุดอยู่ ให้ใช้ container ชั่วคราวแตะ volume แทน:
-
-```bash
 docker run --rm -v loy-krathong_data:/data -v "$PWD":/backup alpine sh -c \
   'cp /backup/krathong-2026-11-25.db /data/krathong.db && rm -f /data/krathong.db-wal /data/krathong.db-shm && chown 1000:1000 /data/krathong.db'
 dc start app
 ```
 
-(ชื่อ volume คือ `<project>_data` ในตัวอย่างนี้คือ `loy-krathong_data` ดูได้จาก `docker volume ls`)
+The volume is named `<project>_data`, here `loy-krathong_data`. Check with `docker volume ls`.
 
-### ส่งออกเป็น JSON
+### Export as JSON
 
 ```bash
 curl -s https://krathong.example.com/api/krathongs > krathongs.json
 ```
 
-## 16. ความปลอดภัย
+## 16. Security
 
-- **IP สำหรับ rate limit มาจาก `X-Forwarded-For`** server เชื่อค่าตัวแรกของ header นี้ ซึ่งปลอดภัยเมื่อ (1) พอร์ตของ `app` เข้าถึงได้จาก proxy เท่านั้น และ (2) proxy **เขียนทับ** header นี้ด้วย IP จริง Caddy 2.5 ขึ้นไปทำแบบนี้เป็นค่าเริ่มต้น ถ้าเปิดพอร์ต `app` สู่อินเทอร์เน็ตตรง ๆ ใครก็ใส่ header ปลอมเพื่อหลบ rate limit ได้
-- **ข้อความผู้ใช้แสดงผลด้วย `textContent`** ไม่ใช่ `innerHTML` จึงไม่เกิด XSS จากชื่อหรือคำอธิษฐาน ถ้าแก้โค้ดแสดงผล ให้รักษาหลักนี้ไว้
-- **รหัส admin** เทียบด้วย `timingSafeEqual` บน SHA-256 และจำกัดจำนวนครั้งที่ผิด ใช้รหัสยาวแบบสุ่ม (`openssl rand`) อย่าใช้รหัสที่เดาได้
-- **ถ้าไม่ตั้ง `ADMIN_PASSWORD`** API admin จะปิดสนิท
-- **rate limit เก็บในหน่วยความจำ** รีสตาร์ตแล้วนับใหม่ และใช้ได้กับ container เดียวเท่านั้น ถ้าจะ scale หลาย instance ต้องย้ายไปเก็บที่อื่น (เช่น Redis) และย้ายฐานข้อมูลออกจาก SQLite ด้วย
-- ไม่มีการกรองคำหยาบ ใช้หน้า `/admin` ลบเอา หรือเพิ่มตัวกรองใน handler `POST` ของ `server/server.mjs`
+- **The rate-limit IP comes from `X-Forwarded-For`.** The server trusts the first value in that header. That's safe only when (1) the `app` port is reachable from the proxy alone, and (2) the proxy **overwrites** the header with the real client IP. Caddy 2.5+ does this by default. If you expose the `app` port directly to the internet, anyone can send a fake header and bypass the rate limit.
+- **User text is rendered with `textContent`**, never `innerHTML`, so names and wishes can't inject HTML. Keep it that way if you change the rendering code.
+- **The admin password** is compared with `timingSafeEqual` over SHA-256 hashes, and wrong attempts are rate-limited. Use a long random password (`openssl rand`), not something guessable.
+- **Without `ADMIN_PASSWORD`**, the admin API is fully disabled.
+- **Rate limits live in memory.** They reset on restart and only work for a single container. Scaling to several instances would mean moving them somewhere shared (such as Redis) and moving off SQLite too.
+- There's no profanity filter. Delete through `/admin`, or add a filter to the `POST` handler in `server/server.mjs`.
 
-## 17. แก้ปัญหาที่พบบ่อย
+## 17. Troubleshooting
 
-| อาการ | สาเหตุ / วิธีแก้ |
+| Symptom | Cause / fix |
 |---|---|
-| `No such built-in module: node:sqlite` | Node เก่ากว่า 22.13 อัปเกรด Node |
-| `npm run dev` แล้วหน้าเว็บขึ้น "กำลังโหลด…" ค้าง | ยังไม่ได้รัน `npm run api` หรือ API ไม่ได้อยู่ที่พอร์ต 3026 |
-| ลอยแล้วได้ "ปิดรับลอยกระทงแล้ว" (403) | ตั้ง `CLOSED` ไว้ ลบออกแล้ว `up -d` ใหม่ (หัวข้อ 9) |
-| หน้าแรกเป็นเครดิต ไม่มีปุ่มลอย | frontend อยู่ในโหมดปิดงาน แก้ `src/main.ts` ตามหัวข้อ 9 |
-| `docker compose up` แจ้ง `env file .env not found` | ยังไม่ได้สร้าง `.env` (หัวข้อ 11.5) ถ้าไม่ต้องการ admin ให้สร้างไฟล์เปล่าด้วย `touch .env` |
-| Caddy log: `challenge failed` / `timeout during connect` | DNS ยังไม่ชี้มา, พอร์ต 80/443 ถูกปิด หรือมี `AAAA` ที่ IPv6 ใช้ไม่ได้ ตรวจด้วย `dig` และ firewall |
-| Caddy log: `too many failed authorizations` | ชนเพดานของ Let's Encrypt รอราว 1 ชั่วโมง แก้ DNS/firewall ให้ถูกก่อนลองใหม่ |
-| เว็บขึ้น `ERR_TOO_MANY_REDIRECTS` | ใช้ Cloudflare proxied กับ SSL mode "Flexible" เปลี่ยนเป็น Full (strict) |
-| `SQLITE_CANTOPEN` / `readonly database` | user `node` ไม่มีสิทธิ์เขียน `/data` เช็กเจ้าของไฟล์ใน volume ต้องเป็น uid 1000 |
-| ทุกคนโดน "ลอยถี่เกินไป" พร้อมกัน | server เห็นทุกคนเป็น IP เดียว (proxy ไม่ส่ง `X-Forwarded-For` หรือใช้ Cloudflare proxied) ดูหัวข้อ 12.4 และ 13 |
+| `No such built-in module: node:sqlite` | Node is older than 22.13. Upgrade Node |
+| With `npm run dev`, the page stays on "กำลังโหลด…" (loading) | `npm run api` isn't running, or the API isn't on port 3026 |
+| Floating fails with "ปิดรับลอยกระทงแล้ว" (403) | `CLOSED` is set. Remove it and run `up -d` again (section 9) |
+| The home page shows credits and no float button | The frontend is in closed mode. Edit `src/main.ts` as in section 9 |
+| `docker compose up` says `env file .env not found` | Create `.env` (section 11.5). If you don't want admin, create an empty one with `touch .env` |
+| Caddy log: `challenge failed` / `timeout during connect` | DNS doesn't point here yet, ports 80/443 are blocked, or there's an `AAAA` record with broken IPv6. Check with `dig` and your firewall |
+| Caddy log: `too many failed authorizations` | You hit Let's Encrypt's rate limit. Wait about an hour and fix DNS/firewall before retrying |
+| Browser shows `ERR_TOO_MANY_REDIRECTS` | Cloudflare proxied with SSL mode "Flexible". Switch to Full (strict) |
+| `SQLITE_CANTOPEN` / `readonly database` | The `node` user can't write to `/data`. Files in the volume must be owned by uid 1000 |
+| Everyone gets "ลอยถี่เกินไป" (too many posts) at once | The server sees everyone as one IP: the proxy doesn't send `X-Forwarded-For`, or Cloudflare is proxying. See sections 12.4 and 13 |
 
 ---
 
 ## License
 
-ยังไม่ได้ระบุ license ถ้าจะเผยแพร่ให้คนอื่นนำไปใช้ต่อ ให้เพิ่มไฟล์ `LICENSE` (เช่น MIT) ก่อน
+No license has been chosen yet. If you want others to reuse this project, add a `LICENSE` file (for example MIT) first.
